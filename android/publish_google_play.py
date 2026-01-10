@@ -1,12 +1,15 @@
 """
-Upload Fulguris metadata to Google Play Store using Python
+Upload Android app metadata to Google Play Store using Python
 No Ruby/Fastlane required!
 
 Installation:
     pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 Usage:
-    python upload_metadata.py path/to/service-account.json
+    python publish_google_play.py <service-account.json> <package-name>
+
+Example:
+    python publish_google_play.py service-account.json net.slions.fulguris.full.playstore
 """
 
 import sys
@@ -15,9 +18,8 @@ from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
 SCOPES = ['https://www.googleapis.com/auth/androidpublisher']
-PACKAGE_NAME = 'net.slions.fulguris.full.playstore'  # Update with your actual package name if different
 
-def upload_metadata(service_account_file):
+def upload_metadata(service_account_file, package_name):
     """Upload metadata for all languages to Google Play Store."""
 
     # Authenticate
@@ -28,8 +30,8 @@ def upload_metadata(service_account_file):
     service = build('androidpublisher', 'v3', credentials=credentials)
 
     # Start edit
-    print(f"📝 Starting edit for package: {PACKAGE_NAME}")
-    edit_request = service.edits().insert(body={}, packageName=PACKAGE_NAME)
+    print(f"📝 Starting edit for package: {package_name}")
+    edit_request = service.edits().insert(body={}, packageName=package_name)
     edit = edit_request.execute()
     edit_id = edit['id']
     print(f"✅ Edit ID: {edit_id}")
@@ -74,13 +76,13 @@ def upload_metadata(service_account_file):
     failed = 0
     skipped_not_enabled = []
 
-    # Get the directory where this script is located (fastlane/)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Use current working directory (where script is called from)
+    cwd = os.getcwd()
 
     # Upload listing for each language
     for lang in languages:
-        # Path is relative to script location
-        metadata_dir = os.path.join(script_dir, 'metadata', 'android', lang)
+        # Path is relative to current working directory
+        metadata_dir = os.path.join(cwd, 'fastlane', 'metadata', 'android', lang)
 
         if not os.path.exists(metadata_dir):
             print(f"⚠️  Skipping {lang} - directory not found")
@@ -118,7 +120,7 @@ def upload_metadata(service_account_file):
                 # Try to update existing listing
                 service.edits().listings().update(
                     editId=edit_id,
-                    packageName=PACKAGE_NAME,
+                    packageName=package_name,
                     language=lang,
                     body=listing_body
                 ).execute()
@@ -130,7 +132,7 @@ def upload_metadata(service_account_file):
                     try:
                         service.edits().listings().patch(
                             editId=edit_id,
-                            packageName=PACKAGE_NAME,
+                            packageName=package_name,
                             language=lang,
                             body=listing_body
                         ).execute()
@@ -153,7 +155,7 @@ def upload_metadata(service_account_file):
     # Commit changes
     print("\n💾 Committing changes...")
     try:
-        service.edits().commit(editId=edit_id, packageName=PACKAGE_NAME).execute()
+        service.edits().commit(editId=edit_id, packageName=package_name).execute()
         commit_success = True
     except Exception as e:
         commit_success = False
@@ -204,16 +206,19 @@ def upload_metadata(service_account_file):
     return commit_success
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python upload_metadata.py path/to/service-account.json")
+    if len(sys.argv) != 3:
+        print("Usage: python publish_google_play.py <service-account.json> <package-name>")
+        print("")
+        print("Example:")
+        print("  python publish_google_play.py service-account.json net.slions.fulguris.full.playstore")
         sys.exit(1)
 
     service_account_file = sys.argv[1]
+    package_name = sys.argv[2]
 
     if not os.path.exists(service_account_file):
         print(f"❌ Error: Service account file not found: {service_account_file}")
         sys.exit(1)
 
-    success = upload_metadata(service_account_file)
+    success = upload_metadata(service_account_file, package_name)
     sys.exit(0 if success else 1)
-
