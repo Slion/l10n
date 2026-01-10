@@ -168,19 +168,23 @@ def validate_android_string(value):
             return False, f"Attribute value not quoted: {unquoted_attr.group(0).strip()}. XML attributes must have quoted values."
 
         # Check for basic XML tag matching
-        tags = re.findall(r'<(/?)(\w+(?::\w+)?)[^>]*>', value)
+        # Pattern captures: (closing_slash, tag_name, rest_of_tag_including_self_closing)
+        tags = re.findall(r'<(/?)(\w+(?::\w+)?)([^>]*?)(/?)>', value)
         tag_stack = []
-        for closing, tag_name in tags:
-            if not closing:
-                # Opening tag
-                tag_stack.append(tag_name)
-            else:
-                # Closing tag
+        for closing, tag_name, content, self_closing in tags:
+            if closing:
+                # Closing tag </foo>
                 if not tag_stack:
                     return False, f"Closing tag </{tag_name}> without matching opening tag"
                 opening = tag_stack.pop()
                 if opening != tag_name:
                     return False, f"Mismatched tags: <{opening}> closed with </{tag_name}>"
+            elif self_closing:
+                # Self-closing tag <foo /> - no need to track
+                pass
+            else:
+                # Opening tag <foo>
+                tag_stack.append(tag_name)
 
         if tag_stack:
             return False, f"Unclosed tag(s): {', '.join('<' + t + '>' for t in tag_stack)}"
