@@ -132,12 +132,67 @@ def copy_to_clipboard(text):
         return False
 
 if __name__ == '__main__':
+    # Handle --help or -h
+    if len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h', 'help']:
+        print("""
+================================================================================
+CHANGELOG COMPILER FOR GOOGLE PLAY CONSOLE
+================================================================================
+
+Generate changelog template from all language files and copy to clipboard
+for bulk upload to Google Play Console.
+
+Usage:
+    python changelogs.py <version_code> [version_code2] [version_code3] ...
+
+Arguments:
+    version_code(s): One or more version numbers to compile changelogs for
+                     Multiple changelogs will be concatenated with separator lines
+
+Examples:
+    python changelogs.py 254
+        Compile changelog for version 254
+    
+    python changelogs.py 239 240
+        Compile and concatenate changelogs for versions 239 and 240
+    
+    python changelogs.py 238 239 240
+        Compile and concatenate changelogs for versions 238, 239, and 240
+
+What it does:
+    1. Reads changelog files from: fastlane/metadata/android/{lang}/changelogs/{version}.txt
+    2. Compiles them into Google Play Console's bulk upload format:
+       <en-US>
+       Changelog text for English
+       </en-US>
+       
+       <cs-CZ>
+       Changelog text for Czech
+       </cs-CZ>
+    
+    3. Copies the compiled template to clipboard (Windows PowerShell)
+    4. Shows statistics about found/missing changelogs
+
+Supported languages: """ + str(len(languages)) + """ languages
+    """ + ", ".join(languages) + """
+
+Next steps:
+    1. Paste into Google Play Console → Release management → Edit release
+    2. Use "Release notes" → "Use bulk editor"
+    3. Paste the compiled template
+    4. Save and publish
+
+================================================================================
+""")
+        sys.exit(0)
+    
     if len(sys.argv) < 2:
         print("Usage: python changelogs.py <version_code> [version_code2] [version_code3] ...")
         print("\nExamples:")
         print("  python changelogs.py 239")
         print("  python changelogs.py 239 240")
         print("  python changelogs.py 238 239 240")
+        print("\nFor detailed help, run: python changelogs.py --help")
         sys.exit(1)
 
     version_codes = sys.argv[1:]

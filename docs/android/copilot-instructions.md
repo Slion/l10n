@@ -1,16 +1,16 @@
-# GitHub Copilot Instructions for Fulguris L10N
+# GitHub Copilot Instructions for Android L10N
 
 ## Project Context
 
-This is **Fulguris Web Browser**, an Android application with localization support for 40 languages and Google Play metadata for 33 languages. You are assisting with translation and localization tasks.
+These are generic Android localization tools (strings.py, changelogs.py, publish_google_play.py) for managing translations and Google Play metadata across any Android application.
 
 ## Your Role
 
-When the user asks to "work on Thai translation" or similar requests, you should:
+When the user asks to work on translations, you should:
 
-1. **Check current status** using `python strings.py --check th-rTH`
+1. **Check current status** using `python strings.py --check <lang-code>`
 2. **Identify untranslated strings** from the check output
-3. **Provide Thai translations** for the untranslated strings
+3. **Provide translations** for the untranslated strings
 4. **Apply translations** using the strings.py tool (PowerShell syntax)
 5. **CHECK FOR ERRORS** in command output - look for `[ERROR]` or `[OK]` messages
 6. **Fix any errors** before continuing
@@ -23,14 +23,13 @@ When the user asks to "work on Thai translation" or similar requests, you should
 
 ## Complete Documentation
 
-📖 **For ALL translation instructions, see [L10N.md](../L10N.md)**
+📖 **For ALL translation instructions, see [L10N.md](L10N.md)**
 
 The L10N.md file contains everything you need:
-- **Current translation status** for all 40 languages including Thai
 - **Complete strings.py tool documentation** with all commands
 - **Translation workflow** (check → translate → apply → verify)
 - **Android XML escaping rules** (CRITICAL: use `\'` not `&apos;`)
-- **PowerShell syntax and quoting** (multiple options explained below)
+- **PowerShell syntax and quoting** (multiple options explained)
 - **Validation rules** and error handling
 - **Plural forms** handling
 - **Special cases** (XML tags, near-matches, multi-line strings)
@@ -49,8 +48,6 @@ The L10N.md file contains everything you need:
 
 **String must exist in English** - If a string doesn't exist in English source file, it cannot be translated. Report to developers.
 
-**NEVER upload to Crowdin** - The `strings.py` script only manages local files. Crowdin uploads must be done manually via `crowdin upload sources` command and only when explicitly requested by the user.
-
 **Read L10N.md first** - All technical details are documented there
 
 ## PowerShell String Quoting Guide
@@ -64,7 +61,7 @@ The L10N.md file contains everything you need:
 python strings.py --set string_id th-rTH 'คำแปล'
 
 # Multiple languages at once (RECOMMENDED)
-python strings.py --set app_name de-rDE 'Fulguris' fr-rFR 'Fulguris' es-rES 'Fulguris'
+python strings.py --set app_name de-rDE 'MyApp' fr-rFR 'MonApp' es-rES 'MiApp'
 
 # Strings with placeholders (%1$s, %d, etc.) - NO escaping needed!
 python strings.py --set string_id th-rTH 'ดาวน์โหลด %1$s'
@@ -104,7 +101,7 @@ python strings.py --check th-rTH
 python strings.py --set string_id th-rTH 'คำแปล'
 
 # Multiple languages at once (RECOMMENDED for same string)
-python strings.py --set app_name de-rDE 'Fulguris' fr-rFR 'Fulguris' es-rES 'Fulguris'
+python strings.py --set app_name de-rDE 'MyApp' fr-rFR 'MonApp' es-rES 'MiApp'
 
 # Strings with placeholders - single quotes, no escaping needed for $
 python strings.py --set dialog_download th-rTH 'คุณต้องการดาวน์โหลดไฟล์นี้หรือไม่? (%1$s)'
@@ -172,8 +169,8 @@ Successfully updated: 2
 
 ## Google Play Metadata
 
-The project maintains **33 Google Play language listings** with store metadata:
-- **Languages:** en-US, en-GB, ar, cs-CZ, da-DK, de-DE, el-GR, es-ES, fi-FI, fr-FR, hi-IN, hr, hu-HU, id, it-IT, ja-JP, ko-KR, lt, nl-NL, no-NO, pl-PL, pt-BR, pt-PT, ro, ru-RU, sr, sv-SE, th, tr-TR, uk, vi, zh-CN, zh-TW
+Android apps using Google Play can maintain language-specific store metadata:
+- **Example Languages:** en-US, en-GB, ar, cs-CZ, da-DK, de-DE, el-GR, es-ES, fi-FI, fr-FR, hi-IN, hr, hu-HU, id, it-IT, ja-JP, ko-KR, lt, nl-NL, no-NO, pl-PL, pt-BR, pt-PT, ro, ru-RU, sr, sv-SE, th, tr-TR, uk, vi, zh-CN, zh-TW
 - **Directory:** `fastlane/metadata/android/{language}/`
 - **Files:** `title.txt`, `short_description.txt`, `full_description.txt`, `changelogs/{version}.txt`
 
@@ -212,7 +209,7 @@ mkdir fastlane\metadata\android\{google-play-code}\changelogs
 2. **Create metadata files:**
 ```powershell
 # title.txt (30 chars max)
-echo "Fulguris" > fastlane\metadata\android\{google-play-code}\title.txt
+echo "YourApp" > fastlane\metadata\android\{google-play-code}\title.txt
 
 # short_description.txt (80 chars max)
 echo "Your tagline here" > fastlane\metadata\android\{google-play-code}\short_description.txt
@@ -259,8 +256,8 @@ mkdir fastlane\metadata\android\en-GB
 mkdir fastlane\metadata\android\en-GB\changelogs
 
 # 2. Create metadata files (British English spellings)
-echo "Fulguris Web Browser" > fastlane\metadata\android\en-GB\title.txt
-echo "Fast, customisable with sessions, ad blocking & privacy features" > fastlane\metadata\android\en-GB\short_description.txt
+echo "Your App Name" > fastlane\metadata\android\en-GB\title.txt
+echo "Your short description here" > fastlane\metadata\android\en-GB\short_description.txt
 copy fastlane\metadata\android\en-US\full_description.txt fastlane\metadata\android\en-GB\full_description.txt
 # Edit full_description.txt: organize→organised, color→colour, trash→rubbish bin
 
@@ -362,10 +359,10 @@ Bug Fixes (multiple):
 ```powershell
 # Find last tag
 git tag --sort=-creatordate | Select-Object -First 5
-# Output: Fulguris-v2.0.1, Fulguris-v2.0.0, ...
+# Output: YourApp-v2.0.1, YourApp-v2.0.0, ...
 
 # Get commits since v2.0.1
-git log Fulguris-v2.0.1..HEAD --pretty=format:"%s" --no-merges | Out-String
+git log YourApp-v2.0.1..HEAD --pretty=format:"%s" --no-merges | Out-String
 
 # Analyze output and create changelog
 # Result: fastlane/metadata/android/en-US/changelogs/253.txt
@@ -396,7 +393,6 @@ After creating English changelog, translate to all 33 Play Store languages if ne
 
 ---
 
-**For complete instructions, commands, examples, and troubleshooting: See [L10N.md](../L10N.md)**
+**For complete instructions, commands, examples, and troubleshooting: See [L10N.md](L10N.md)**
 
 **Last Updated:** December 22, 2025
-**Maintained by:** Fulguris Development Team
