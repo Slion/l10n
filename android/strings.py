@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 from pathlib import Path
@@ -306,9 +307,11 @@ def show_help():
     print("      python strings.py --remove obsolete_string")
     print("      python strings.py --remove string1 string2 string3")
     print("\n  python strings.py --unused")
-    print("    Find strings defined in English but not used in source code")
+    print("    Find unused strings in two ways:")
+    print("    1. Strings defined in English but not used in source code")
+    print("    2. Orphaned strings in language files that no longer exist in English source")
     print("    Searches .kt, .java, and .xml files for R.string.* and @string/* references")
-    print("    Outputs a command to remove all unused strings")
+    print("    Outputs commands to remove all unused/orphaned strings")
     print("\n  python strings.py --changed")
     print("    Detect source strings that have changed and need translation updates")
     print("    Compares English source (values/strings.xml) with en-rUS translations.")
@@ -1406,7 +1409,9 @@ def sort_all_strings(language=None):
 
 
 def find_unused_strings():
-    """Find strings defined in English but not used anywhere in the source code.
+    """Find unused strings in two ways:
+    1. Strings defined in English but not used anywhere in source code
+    2. Orphaned strings in language files that no longer exist in English source
 
     Optimized approach: Read each source file once, use a single regex to find
     ALL string references, then compute the difference.
@@ -1420,8 +1425,13 @@ def find_unused_strings():
         content = f.read()
 
     string_names = set(re.findall(r'<string name="([^"]+)"', content))
+    plural_names = set(re.findall(r'<plurals name="([^"]+)"', content))
+    all_source_ids = string_names | plural_names
+
     total_strings = len(string_names)
-    print(f"Total strings defined: {total_strings}")
+    total_plurals = len(plural_names)
+    print(f"Total strings defined in source: {total_strings}")
+    print(f"Total plurals defined in source: {total_plurals}")
 
     # Get all source files
     source_patterns = ['**/*.kt', '**/*.java', '**/*.xml']
@@ -1491,14 +1501,88 @@ def find_unused_strings():
     total_time = time.time() - start_time
     print(f"\nTotal time: {total_time:.2f}s")
 
-    if not unused:
-        print("No unused strings found!")
-        sys.exit(0)
-
-    print(f"\nTotal unused strings: {len(unused)}")
+    # Check for orphaned strings in language files
     print("\n" + "="*60)
-    print("UNUSED STRINGS FOUND:")
+    print("CHECKING FOR ORPHANED STRINGS IN LANGUAGE FILES:")
     print("="*60)
+
+    res_dir = Path('app/src/main/res')
+    lang_dirs = [d for d in res_dir.glob('values-*')
+                 if d.is_dir()
+                 and 'night' not in d.name
+                 and 'v27' not in d.name
+                 and 'v30' not in d.name]
+
+    orphaned_by_lang = {}
+
+    for lang_dir in sorted(lang_dirs):
+        strings_file = lang_dir / 'strings.xml'
+        if not strings_file.exists():
+            continue
+
+        lang_name = lang_dir.name.replace('values-', '')
+
+        with open(strings_file, 'r', encoding='utf-8') as f:
+            lang_content = f.read()
+
+        # Get all string and plural IDs in this language file
+        lang_string_ids = set(re.findall(r'<string name="([^"]+)"', lang_content))
+        lang_plural_ids = set(re.findall(r'<plurals name="([^"]+)"', lang_content))
+        lang_all_ids = lang_string_ids | lang_plural_ids
+
+        # Find IDs that are in language file but NOT in English source
+        orphaned = lang_all_ids - all_source_ids
+
+        if orphaned:
+            orphaned_by_lang[lang_name] = sorted(orphaned)
+
+    if orphaned_by_lang:
+        print(f"\nFound orphaned strings in {len(orphaned_by_lang)} languages!")
+        print("\nOrphaned strings (in language files but not in English source):")
+        all_orphaned = set()
+        for lang, orphaned_list in sorted(orphaned_by_lang.items()):
+            print(f"\n  {lang} ({len(orphaned_list)} orphaned):")
+            for string_id in orphaned_list:
+                print(f"    - {string_id}")
+                all_orphaned.add(string_id)
+
+        # Generate removal command for all unique orphaned strings
+        if all_orphaned:
+            # Calculate relative path from cwd to this script
+            script_path = os.path.abspath(__file__)
+            cwd = os.getcwd()
+            try:
+                rel_path = os.path.relpath(script_path, cwd)
+            except ValueError:
+                # Different drives on Windows
+                rel_path = script_path
+
+            print("\n" + "="*60)
+            print("TO REMOVE ORPHANED STRINGS FROM ALL LANGUAGES, RUN:")
+            print("="*60)
+            print(f"python {rel_path} --remove", end="")
+            for string_id in sorted(all_orphaned):
+                print(f" {string_id}", end="")
+            print("\n")
+    else:
+        print("✓ No orphaned strings found in language files")
+
+    # Report on unused strings in English source
+    if not unused:
+        print("\n" + "="*60)
+        print("STRINGS UNUSED IN CODE:")
+        print("="*60)
+        print("✓ No unused strings found in English source!")
+
+        if not orphaned_by_lang:
+            sys.exit(0)
+        else:
+            sys.exit(1)  # Exit with error if orphaned strings found
+
+    print(f"\n" + "="*60)
+    print("STRINGS UNUSED IN CODE:")
+    print("="*60)
+    print(f"Total unused strings in English source: {len(unused)}")
 
     # Simple list
     print("\nUnused strings:")
@@ -1506,10 +1590,19 @@ def find_unused_strings():
         print(f"  - {string_name}")
 
     # Output command to remove them
+    # Calculate relative path from cwd to this script
+    script_path = os.path.abspath(__file__)
+    cwd = os.getcwd()
+    try:
+        rel_path = os.path.relpath(script_path, cwd)
+    except ValueError:
+        # Different drives on Windows
+        rel_path = script_path
+
     print("\n" + "="*60)
     print("TO REMOVE THESE STRINGS, RUN:")
     print("="*60)
-    print("python strings.py --remove", end="")
+    print(f"python {rel_path} --remove", end="")
     for string_name in unused:
         print(f" {string_name}", end="")
     print("\n")
