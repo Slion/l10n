@@ -54,7 +54,8 @@ languages = [
 
 def generate_template(version_codes):
     """Generate the changelog template from existing files for multiple versions."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Use current working directory (where the command is run from)
+    cwd = os.getcwd()
     template = ""
     found_count = 0
     missing = []
@@ -63,7 +64,7 @@ def generate_template(version_codes):
     if len(version_codes) == 1:
         version_code = version_codes[0]
         for lang in languages:
-            changelog_file = os.path.join(script_dir, 'metadata', 'android', lang, 'changelogs', f'{version_code}.txt')
+            changelog_file = os.path.join(cwd, 'fastlane', 'metadata', 'android', lang, 'changelogs', f'{version_code}.txt')
 
             if os.path.exists(changelog_file):
                 try:
@@ -85,7 +86,7 @@ def generate_template(version_codes):
             all_found = True
 
             for version_code in version_codes:
-                changelog_file = os.path.join(script_dir, 'metadata', 'android', lang, 'changelogs', f'{version_code}.txt')
+                changelog_file = os.path.join(cwd, 'fastlane', 'metadata', 'android', lang, 'changelogs', f'{version_code}.txt')
 
                 if os.path.exists(changelog_file):
                     try:
