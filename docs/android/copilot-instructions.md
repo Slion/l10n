@@ -97,11 +97,11 @@ python strings.py --raw --set string_id th-rTH 'ข้อความ <xliff:g i
 # Check what needs translation
 python strings.py --check th-rTH
 
-# Single language - use single quotes
-python strings.py --set string_id th-rTH 'คำแปล'
-
-# Multiple languages at once (RECOMMENDED for same string)
+# ONE string across MULTIPLE languages (for same string in different languages)
 python strings.py --set app_name de-rDE 'MyApp' fr-rFR 'MonApp' es-rES 'MiApp'
+
+# MULTIPLE strings in ONE language (for bulk translation - RECOMMENDED for efficiency)
+python strings.py --set-batch th-rTH string1 'คำแปล1' string2 'คำแปล2' string3 'คำแปล3'
 
 # Strings with placeholders - single quotes, no escaping needed for $
 python strings.py --set dialog_download th-rTH 'คุณต้องการดาวน์โหลดไฟล์นี้หรือไม่? (%1$s)'
@@ -125,6 +125,12 @@ python strings.py --raw --set match_x_of_n th-rTH 'ตรงกัน <xliff:g i
 # Edit English source strings (developers only) - use 'source' as language code
 python strings.py --get source settings           # Read from English source
 python strings.py --set settings source 'Settings'  # Update English source string
+
+# Bulk translate MULTIPLE strings in ONE language (efficient for large translation batches)
+python strings.py --set-batch th-rTH action_close 'ปิด' action_exit 'ออก' action_save 'บันทึก'
+
+# Bulk translate with XML content (use --raw flag)
+python strings.py --raw --set-batch th-rTH string1 'Text <xliff:g id="x">%s</xliff:g>' string2 'Other text'
 ```
 
 ## Error Checking - IMPORTANT!

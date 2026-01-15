@@ -256,20 +256,28 @@ def show_help():
     print("    Show this help message")
     print("\n  python strings.py --summary")
     print("    Show only summary statistics for all languages")
-    print("\n  python strings.py [--raw] --set <lang> <string_id> <value> [<string_id> <value> ...]")
-    print("    Set one or more string values for a specific language")
+    print("\n  python strings.py [--raw] --set <string_id> <lang> <value> [<lang> <value> ...]")
+    print("    Set ONE string value across MULTIPLE languages")
     print("    By default, values are XML-escaped (quotes, apostrophes).")
     print("    Use --raw flag for complex XML content (no escaping).")
     print("    Will ERROR if string doesn't exist in English source file.")
     print("    ")
     print("    Special language code 'source': Edit the English source file directly")
-    print("      python strings.py --set source string_id 'Updated English text'")
+    print("      python strings.py --set string_id source 'Updated English text'")
     print("    ")
     print("    Examples:")
-    print("      python strings.py --set ru-rRU locale_app_name \"Веб-браузер Fulguris\"")
-    print("      python strings.py --set ko-rKR enable \"사용\" disable \"사용 안 함\" show \"표시\"")
-    print("      python strings.py --raw --set ko-rKR test '<xliff:g id=\"x\">%1$d</xliff:g>개'")
-    print("      python strings.py --set source settings 'Settings'  # Edit English source")
+    print("      python strings.py --set locale_app_name ru-rRU \"Веб-браузер Fulguris\"")
+    print("      python strings.py --set app_name de-rDE 'Fulguris' fr-rFR 'Fulguris' es-rES 'Fulguris'")
+    print("      python strings.py --raw --set test ko-rKR '<xliff:g id=\"x\">%1$d</xliff:g>개'")
+    print("      python strings.py --set settings source 'Settings'  # Edit English source")
+    print("    ")
+    print("\n  python strings.py [--raw] --set-batch <lang> <string_id> <value> [<string_id> <value> ...]")
+    print("    Set MULTIPLE strings in ONE language (batch mode - more efficient!)")
+    print("    ")
+    print("    Examples:")
+    print("      python strings.py --set-batch ca-rES enable 'Activa' disable 'Desactiva' show 'Mostra'")
+    print("      python strings.py --set-batch ko-rKR action_reload '새로고침' action_share '공유'")
+    print("      python strings.py --raw --set-batch ko-rKR test '<xliff:g>%s</xliff:g>' test2 'value'")
     print("    ")
     print("    IMPORTANT - Only updates existing strings!")
     print("      --set will error if string doesn't exist in English source file.")
@@ -1715,6 +1723,34 @@ if len(sys.argv) > 1:
         if len(updates) > 1:
             print(f"\nUpdated: {success_count}, Errors: {error_count}")
         sys.exit(0 if error_count == 0 else 1)
+    # Handle set-batch command (multiple strings in one language)
+    elif arg == '--set-batch':
+        if len(sys.argv) < arg_start + 4:
+            print("Error: --set-batch requires: <lang> <string_id> <value> [<string_id> <value> ...]")
+            print("Examples:")
+            print("  python strings.py --set-batch ca-rES enable 'Activa' disable 'Desactiva'")
+            print("  python strings.py --set-batch ko-rKR action_reload '새로고침' action_share '공유'")
+            print("  python strings.py --raw --set-batch ko-rKR test '<xliff:g>%s</xliff:g>' test2 'value2'")
+            print("\nNote: Strings must exist in English source. Use --add to add new strings to English first.")
+            sys.exit(1)
+
+        language = sys.argv[arg_start + 1]
+
+        # Parse pairs of string_id and value
+        string_pairs = []  # List of (string_id, value)
+        i = arg_start + 2
+        while i < len(sys.argv):
+            if i + 1 >= len(sys.argv):
+                print(f"Error: Missing value for string '{sys.argv[i]}'")
+                sys.exit(1)
+            string_id = sys.argv[i]
+            value = sys.argv[i + 1]
+            string_pairs.append((string_id, value))
+            i += 2
+
+        # Use the batch function
+        set_string_values_batch(language, string_pairs, skip_escape=skip_escape)
+        sys.exit(0)
     # Handle set-plurals command
     elif arg == '--set-plurals':
         if len(sys.argv) < arg_start + 5:
