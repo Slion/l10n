@@ -462,6 +462,9 @@ def get_string_value_all(string_id):
     print("=" * 80)
     
     found_any = False
+    translated_count = 0
+    total_count = len(lang_codes)
+    
     for lang_code in lang_codes:
         # Determine file path
         if lang_code == 'source':
@@ -492,10 +495,15 @@ def get_string_value_all(string_id):
             lang_name = lang_names.get(lang_code, lang_code)
             print(f"{lang_name} - {lang_code}: \"{value}\"")
             found_any = True
+            translated_count += 1
     
     if not found_any:
         print(f"Error: String ID '{string_id}' not found in any language file")
         sys.exit(1)
+    
+    # Print summary
+    print("=" * 80)
+    print(f"Translated in {translated_count}/{total_count} languages")
     
     sys.exit(0)
 
