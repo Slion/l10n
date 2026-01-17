@@ -378,11 +378,12 @@ def get_string_value(language, string_id):
     # Escape special regex characters in the string ID
     escaped_id = re.escape(string_id)
 
-    # Pattern to match the string entry
-    pattern = f'<string name="{escaped_id}">([^<]*)</string>'
+    # Pattern to match the string entry - use .*? to match any content including XML tags
+    # The ? makes it non-greedy so it stops at the first </string>
+    pattern = f'<string name="{escaped_id}">(.*?)</string>'
 
-    # Search for the string
-    match = re.search(pattern, content)
+    # Search for the string - use DOTALL flag to match across newlines
+    match = re.search(pattern, content, re.DOTALL)
     if not match:
         print(f"Error: String ID '{string_id}' not found in {file_path}")
         sys.exit(1)
