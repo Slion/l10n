@@ -1979,7 +1979,11 @@ for lang_dir in sorted(lang_dirs):
         # Check if string is in translated file
         if string_name not in translated_string_ids:
             # String is MISSING from translated file - always flag this
-            lang_issues.append(f"  Missing: {string_name} = '{english_value}'")
+            lang_issues.append({
+                'type': 'missing',
+                'name': string_name,
+                'value': english_value
+            })
             continue
 
         # String IS in translated file - only check in FULL mode
@@ -2002,17 +2006,28 @@ for lang_dir in sorted(lang_dirs):
                 if is_english_variant:
                     # English variants: flag differences (potential issues to review)
                     if not is_exact_match:
-                        lang_issues.append(f"  Differs from source: {string_name}")
-                        lang_issues.append(f"    Source: '{english_value}'")
-                        lang_issues.append(f"    en-rUS:  '{translated_value}'")
+                        lang_issues.append({
+                            'type': 'differs',
+                            'name': string_name,
+                            'source': english_value,
+                            'translation': translated_value
+                        })
                 else:
                     # Other languages: flag matches (untranslated)
                     if is_exact_match:
-                        lang_issues.append(f"  Untranslated: {string_name} = '{english_value}'")
+                        lang_issues.append({
+                            'type': 'untranslated',
+                            'name': string_name,
+                            'value': english_value
+                        })
                     elif is_near_match:
-                        lang_issues.append(f"  Near match ({char_diff} chars): {string_name}")
-                        lang_issues.append(f"    EN: '{english_value}'")
-                        lang_issues.append(f"    TR: '{translated_value}'")
+                        lang_issues.append({
+                            'type': 'near_match',
+                            'name': string_name,
+                            'char_diff': char_diff,
+                            'english': english_value,
+                            'translation': translated_value
+                        })
 
     # Check placeholder consistency for strings that ARE in translated file (always check this)
     for line in trans_content.split('\n'):
@@ -2031,10 +2046,12 @@ for lang_dir in sorted(lang_dirs):
             trans_placeholders = re.findall(r'%\d*\$?[sdif]|\{[^}]+\}|<xliff:g[^>]*>.*?</xliff:g>', translated_value)
 
             if len(english_placeholders) != len(trans_placeholders):
-                lang_issues.append(f"  [CRITICAL] Placeholder mismatch: {string_name}")
-                lang_issues.append(f"    English: {english_placeholders}")
-                lang_issues.append(f"    Translation: {trans_placeholders}")
-                lang_issues.append(f"    WARNING: This WILL cause app crashes!")
+                lang_issues.append({
+                    'type': 'placeholder_mismatch',
+                    'name': string_name,
+                    'english_placeholders': english_placeholders,
+                    'trans_placeholders': trans_placeholders
+                })
 
     # Check plurals
     is_english_variant = lang_name.startswith('en-')
@@ -2046,7 +2063,10 @@ for lang_dir in sorted(lang_dirs):
 
         if not plurals_match:
             # Plurals resource missing entirely - always flag
-            lang_issues.append(f"  Missing plurals: {plurals_name}")
+            lang_issues.append({
+                'type': 'missing_plurals',
+                'name': plurals_name
+            })
             continue
 
         trans_plurals_content = plurals_match.group(1)
@@ -2064,9 +2084,11 @@ for lang_dir in sorted(lang_dirs):
                             differing_quantities.append(f"{quantity}: '{trans_value}' (source: '{english_value}')")
 
                 if differing_quantities:
-                    lang_issues.append(f"  Plurals '{plurals_name}' differs from source:")
-                    for diff in differing_quantities:
-                        lang_issues.append(f"    {diff}")
+                    lang_issues.append({
+                        'type': 'plurals_differs',
+                        'name': plurals_name,
+                        'diffs': differing_quantities
+                    })
             else:
                 # Other languages: flag plurals that MATCH source (untranslated)
                 untranslated_quantities = []
@@ -2077,9 +2099,11 @@ for lang_dir in sorted(lang_dirs):
                             untranslated_quantities.append(f"{quantity}: '{english_value}'")
 
                 if untranslated_quantities:
-                    lang_issues.append(f"  Plurals '{plurals_name}' untranslated:")
-                    for untrans in untranslated_quantities:
-                        lang_issues.append(f"    {untrans}")
+                    lang_issues.append({
+                        'type': 'plurals_untranslated',
+                        'name': plurals_name,
+                        'untrans': untranslated_quantities
+                    })
 
     if lang_issues:
         issues_found[lang_name] = lang_issues
@@ -2092,21 +2116,56 @@ if issues_found:
         for lang_name in sorted(issues_found.keys()):
             issues = issues_found[lang_name]
             # Count critical (placeholder) issues
-            critical_count = sum(1 for issue in issues if 'CRITICAL' in issue)
+            critical_count = sum(1 for issue in issues if isinstance(issue, dict) and issue.get('type') == 'placeholder_mismatch')
 
             if critical_count > 0:
                 print(f"\n{lang_name} ({len(issues)} issues, {critical_count} CRITICAL):")
             else:
                 print(f"\n{lang_name} ({len(issues)} issues):")
 
+            # Define helper to print an issue
+            def print_issue(issue):
+                if isinstance(issue, dict):
+                    issue_type = issue.get('type')
+                    if issue_type == 'differs':
+                        print(f"  Differs from source: {issue['name']}")
+                        print(f"    Source: '{issue['source']}'")
+                        print(f"    {lang_name}:  '{issue['translation']}'")
+                    elif issue_type == 'untranslated':
+                        print(f"  Untranslated: {issue['name']} = '{issue['value']}'")
+                    elif issue_type == 'near_match':
+                        print(f"  Near match ({issue['char_diff']} chars): {issue['name']}")
+                        print(f"    EN: '{issue['english']}'")
+                        print(f"    TR: '{issue['translation']}'")
+                    elif issue_type == 'missing':
+                        print(f"  Missing: {issue['name']} = '{issue['value']}'")
+                    elif issue_type == 'placeholder_mismatch':
+                        print(f"  [CRITICAL] Placeholder mismatch: {issue['name']}")
+                        print(f"    English: {issue['english_placeholders']}")
+                        print(f"    Translation: {issue['trans_placeholders']}")
+                        print(f"    WARNING: This WILL cause app crashes!")
+                    elif issue_type == 'missing_plurals':
+                        print(f"  Missing plurals: {issue['name']}")
+                    elif issue_type == 'plurals_differs':
+                        print(f"  Plurals '{issue['name']}' differs from source:")
+                        for diff in issue['diffs']:
+                            print(f"    {diff}")
+                    elif issue_type == 'plurals_untranslated':
+                        print(f"  Plurals '{issue['name']}' untranslated:")
+                        for untrans in issue['untrans']:
+                            print(f"    {untrans}")
+                else:
+                    # Fallback for any string-format issues (shouldn't happen)
+                    print(issue)
+
             # If specific language requested, show all issues; otherwise show first 20
             if show_all_for_lang:
                 for issue in issues:
-                    print(issue)
+                    print_issue(issue)
                 print(f"\n*** Showing ALL {len(issues)} issues for {lang_name} ***")
             else:
                 for issue in issues[:20]:  # Show first 20
-                    print(issue)
+                    print_issue(issue)
                 if len(issues) > 20:
                     print(f"  ... and {len(issues) - 20} more issues")
 else:
@@ -2117,7 +2176,7 @@ else:
 # Count total critical issues across all languages
 total_critical = 0
 for issues in issues_found.values():
-    total_critical += sum(1 for issue in issues if 'CRITICAL' in issue)
+    total_critical += sum(1 for issue in issues if isinstance(issue, dict) and issue.get('type') == 'placeholder_mismatch')
 
 print("\n" + "="*80)
 print("SUMMARY")
