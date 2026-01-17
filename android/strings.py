@@ -292,9 +292,16 @@ def show_help():
     print("\n  python strings.py --get <lang> <string_id>")
     print("    Get a string value from a specific language")
     print("    Use 'source' as language code to read from English source file")
+    print("    Use 'all' as language code to get from ALL languages")
     print("    Examples:")
     print("      python strings.py --get ru-rRU locale_app_name")
     print("      python strings.py --get source settings  # Read from English source")
+    print("      python strings.py --get all app_name     # Show all translations")
+    print("\n  python strings.py --get-all <string_id>")
+    print("    Get a string value from ALL language files (alias for --get all)")
+    print("    Shows language name, code, and translation for every language")
+    print("    Example:")
+    print("      python strings.py --get-all locale_app_name")
     print("\n  python strings.py --get-plurals <lang> <plurals_name>")
     print("    Get all plural items for a plurals resource")
     print("    Example:")
@@ -391,6 +398,105 @@ def get_string_value(language, string_id):
     value = match.group(1)
     print(f"{language}:{string_id}")
     print(f"  {value}")
+    sys.exit(0)
+
+def get_string_value_all(string_id):
+    """Get a string value from ALL language files."""
+    # Language code to name mapping
+    lang_names = {
+        'source': 'English (Source)',
+        'af-rZA': 'Afrikaans',
+        'ar-rSA': 'Arabic',
+        'bs-rBA': 'Bosnian',
+        'ca-rES': 'Catalan',
+        'zh-rCN': 'Chinese (CN)',
+        'zh-rTW': 'Chinese (TW)',
+        'hr-rHR': 'Croatian',
+        'cs-rCZ': 'Czech',
+        'da-rDK': 'Danish',
+        'nl-rNL': 'Dutch',
+        'en-rUS': 'English (US)',
+        'en-rGB': 'English (GB)',
+        'fi-rFI': 'Finnish',
+        'fr-rFR': 'French',
+        'de-rDE': 'German',
+        'el-rGR': 'Greek',
+        'iw-rIL': 'Hebrew',
+        'hi-rIN': 'Hindi',
+        'hu-rHU': 'Hungarian',
+        'in-rID': 'Indonesian',
+        'it-rIT': 'Italian',
+        'ja-rJP': 'Japanese',
+        'ko-rKR': 'Korean',
+        'lt-rLT': 'Lithuanian',
+        'me-rME': 'Montenegro',
+        'no-rNO': 'Norwegian',
+        'pl-rPL': 'Polish',
+        'pt-rBR': 'Portuguese (BR)',
+        'pt-rPT': 'Portuguese (PT)',
+        'ro-rRO': 'Romanian',
+        'ru-rRU': 'Russian',
+        'sat-rIN': 'Santali',
+        'sr-rCS': 'Serbian (Cyrillic)',
+        'sr-rSP': 'Serbian (Latin)',
+        'es-rES': 'Spanish',
+        'sv-rSE': 'Swedish',
+        'th-rTH': 'Thai',
+        'tr-rTR': 'Turkish',
+        'uk-rUA': 'Ukrainian',
+        'vi-rVN': 'Vietnamese',
+    }
+    
+    # Get all language directories
+    res_dir = Path('app/src/main/res')
+    lang_dirs = [d for d in res_dir.glob('values-*')
+                 if d.is_dir()
+                 and 'night' not in d.name
+                 and 'v27' not in d.name
+                 and 'v30' not in d.name]
+    
+    # Sort by language name for better readability
+    lang_codes = ['source'] + [d.name.replace('values-', '') for d in sorted(lang_dirs)]
+    
+    print(f"String ID: {string_id}")
+    print("=" * 80)
+    
+    found_any = False
+    for lang_code in lang_codes:
+        # Determine file path
+        if lang_code == 'source':
+            file_path = Path('app/src/main/res/values/strings.xml')
+        else:
+            file_path = Path(f'app/src/main/res/values-{lang_code}/strings.xml')
+        
+        if not file_path.exists():
+            continue
+        
+        # Read the file content
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            continue
+        
+        # Escape special regex characters in the string ID
+        escaped_id = re.escape(string_id)
+        
+        # Pattern to match the string entry
+        pattern = f'<string name="{escaped_id}">(.*?)</string>'
+        
+        # Search for the string
+        match = re.search(pattern, content, re.DOTALL)
+        if match:
+            value = match.group(1)
+            lang_name = lang_names.get(lang_code, lang_code)
+            print(f"{lang_name} - {lang_code}: \"{value}\"")
+            found_any = True
+    
+    if not found_any:
+        print(f"Error: String ID '{string_id}' not found in any language file")
+        sys.exit(1)
+    
     sys.exit(0)
 
 def get_plurals_value(language, plurals_name):
@@ -1664,10 +1770,23 @@ if len(sys.argv) > 1:
         if len(sys.argv) < arg_start + 3:
             print("Error: --get requires 2 arguments: <language> <string_id>")
             print("Example: python strings.py --get ru-rRU locale_app_name")
+            print("         python strings.py --get all locale_app_name  (all languages)")
             sys.exit(1)
         language = sys.argv[arg_start + 1]
         string_id = sys.argv[arg_start + 2]
-        get_string_value(language, string_id)
+        # Special case: 'all' gets from all languages
+        if language == 'all':
+            get_string_value_all(string_id)
+        else:
+            get_string_value(language, string_id)
+    # Handle get-all command (alias for --get all)
+    elif arg == '--get-all':
+        if len(sys.argv) < arg_start + 2:
+            print("Error: --get-all requires 1 argument: <string_id>")
+            print("Example: python strings.py --get-all locale_app_name")
+            sys.exit(1)
+        string_id = sys.argv[arg_start + 1]
+        get_string_value_all(string_id)
     # Handle get-plurals command
     elif arg == '--get-plurals':
         if len(sys.argv) < arg_start + 3:
