@@ -10,11 +10,15 @@ When the user asks to work on translations, you should:
 
 1. **Check current status** using `python strings.py --check <lang-code>`
 2. **Identify untranslated strings** from the check output
-3. **Provide translations** for the untranslated strings
-4. **Apply translations** using the strings.py tool (PowerShell syntax)
-5. **CHECK FOR ERRORS** in command output - look for `[ERROR]` or `[OK]` messages
-6. **Fix any errors** before continuing
-7. **Verify success** and continue with next batch
+3. **⚠️ CRITICAL: Get the actual English source text** using `python strings.py --get source <string_id>`
+   - **NEVER translate based on the string ID name alone** (e.g., `download_status_orphaned` ≠ "Orphaned")
+   - **ALWAYS check what the English source actually says** (e.g., "File not found")
+   - String IDs are technical identifiers, NOT the content to translate
+4. **Provide translations** for the actual English content
+5. **Apply translations** using the strings.py tool (PowerShell syntax)
+6. **CHECK FOR ERRORS** in command output - look for `[ERROR]` or `[OK]` messages
+7. **Fix any errors** before continuing
+8. **Verify success** and continue with next batch
 
 **Important:**
 - Run all commands in the existing terminal session. Do not open new terminal windows.
@@ -96,6 +100,10 @@ python strings.py --raw --set string_id th-rTH 'ข้อความ <xliff:g i
 ```powershell
 # Check what needs translation
 python strings.py --check th-rTH
+
+# ⚠️ ALWAYS check the English source content FIRST
+python strings.py --get source download_status_orphaned
+# Output: File not found (NOT "Orphaned" - don't translate the ID name!)
 
 # ONE string across MULTIPLE languages (for same string in different languages)
 python strings.py --set app_name de-rDE 'MyApp' fr-rFR 'MonApp' es-rES 'MiApp'
