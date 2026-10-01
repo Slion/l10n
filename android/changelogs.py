@@ -108,8 +108,8 @@ def generate_template(version_codes):
                     break
 
             if all_found and concatenated_content:
-                # Join multiple changelogs with separator
-                separator = "\n\n---\n\n"
+                # Join multiple changelogs with a single newline (no separator)
+                separator = "\n"
                 combined = separator.join(concatenated_content)
                 template += f"<{lang}>\n{combined}\n</{lang}>\n\n"
                 found_count += 1
