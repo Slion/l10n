@@ -14,6 +14,9 @@ Arguments:
 import sys
 import os
 
+# Google Play Console limits each language's release notes to 500 characters.
+MAX_CHANGELOG_LENGTH = 500
+
 # Languages from publish_google_play.py (Google Play Console language codes)
 # See: https://support.google.com/googleplay/android-developer/table/4419860?hl=en
 languages = [
@@ -59,6 +62,7 @@ def generate_template(version_codes):
     template = ""
     found_count = 0
     missing = []
+    too_long = []  # (lang, length) for notes exceeding Google Play's limit
 
     # If single version, process normally
     if len(version_codes) == 1:
@@ -72,6 +76,8 @@ def generate_template(version_codes):
                         content = f.read().strip()
                     template += f"<{lang}>\n{content}\n</{lang}>\n\n"
                     found_count += 1
+                    if len(content) > MAX_CHANGELOG_LENGTH:
+                        too_long.append((lang, len(content)))
                 except Exception as e:
                     print(f"⚠️  Error reading {lang}: {e}")
                     template += f"<{lang}>\nError reading file\n</{lang}>\n\n"
@@ -107,11 +113,13 @@ def generate_template(version_codes):
                 combined = separator.join(concatenated_content)
                 template += f"<{lang}>\n{combined}\n</{lang}>\n\n"
                 found_count += 1
+                if len(combined) > MAX_CHANGELOG_LENGTH:
+                    too_long.append((lang, len(combined)))
             else:
                 template += f"<{lang}>\nEnter or paste your release notes for {lang} here\n</{lang}>\n\n"
                 missing.append(lang)
 
-    return template.strip(), found_count, missing
+    return template.strip(), found_count, missing, too_long
 
 def copy_to_clipboard(text):
     """Copy text to clipboard using PowerShell Set-Clipboard for proper UTF-8 encoding."""
@@ -171,8 +179,14 @@ What it does:
        Changelog text for Czech
        </cs-CZ>
     
-    3. Copies the compiled template to clipboard (Windows PowerShell)
-    4. Shows statistics about found/missing changelogs
+    3. Warns if any note exceeds Google Play's 500-character limit
+    4. Copies the compiled template to clipboard (Windows PowerShell)
+    5. Shows statistics about found/missing changelogs
+
+IMPORTANT:
+    Each language's release notes must be 500 characters or fewer, or the Play
+    Console bulk editor rejects that language. This script reports any that are
+    over the limit; trim the offending note(s) and re-run before pasting.
 
 Supported languages: """ + str(len(languages)) + """ languages
     """ + ", ".join(languages) + """
@@ -203,12 +217,18 @@ Next steps:
     else:
         print(f"📋 Compiling and concatenating changelog templates for versions: {', '.join(version_codes)}...")
 
-    template, found_count, missing = generate_template(version_codes)
+    template, found_count, missing, too_long = generate_template(version_codes)
 
     print(f"✅ Found changelogs for {found_count}/{len(languages)} languages")
 
     if missing:
         print(f"⚠️  Missing changelogs for {len(missing)} languages: {', '.join(missing)}")
+
+    if too_long:
+        print(f"❌ {len(too_long)} release note(s) exceed Google Play's {MAX_CHANGELOG_LENGTH}-character limit:")
+        for lang, length in too_long:
+            print(f"   - {lang}: {length} chars (trim {length - MAX_CHANGELOG_LENGTH} to fit)")
+        print("\n   Shorten the offending note(s) and re-run before pasting into the Play Console.")
 
     if copy_to_clipboard(template):
         print("✅ Template copied to clipboard!")
